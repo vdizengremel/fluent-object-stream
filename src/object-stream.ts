@@ -1,0 +1,261 @@
+import { Readable, Transform, Writable } from 'stream'
+import { pipeline } from 'stream/promises'
+
+/**
+ * This is a class to facilitate the transformation of data in a stream. The generic type represent the type of the data in the stream.
+ * All methods allow to keep a strongly typed system.
+ */
+export default class ObjectStream<T> {
+  private constructor(private readonly stream: Readable, private readonly intermediateOperations: Transform[] = []) {}
+
+  static ofReadable<T>(readable: Readable): ObjectStream<T> {
+    return new ObjectStream<T>(readable)
+  }
+
+  /**
+   * Returns an {@link ObjectStream} consisting of the results of applying the given function to each element of this stream.
+   * To use an async function, see {@link mapAsync} instead.
+   * <p>
+   *  This is an <strong>intermediate operation</strong>.
+   * <p/>
+   * @param mapFn Function that is called for every element of the stream.
+   * The mapFn function accepts one argument which is the current element processed in the stream.
+   * @return the new {@link ObjectStream}.
+   */
+  public map<R>(mapFn: (value: T) => R): ObjectStream<R> {
+    return this.transformWith((value, pushData) => {
+      const mappedValue = mapFn(value)
+      pushData(mappedValue)
+    })
+  }
+
+  /**
+   * Returns an {@link ObjectStream} consisting of the results of resolving the given function to each element of this stream.
+   * To use a sync operation, see {@link map} instead.
+   * <p>
+   *  This is an <strong>intermediate operation</strong>.
+   * <p/>
+   * @param mapFn Function that is called for every element of the stream to transform each element with the resolve value af this function.
+   * The mapFn function accepts one argument which is the current element processed in the stream.
+   * @return the new {@link ObjectStream}.
+   */
+  public mapAsync<R>(mapFn: (value: T) => Promise<R>): ObjectStream<R> {
+    return this.transformWith(async (value, pushData) => {
+      const mappedValue = await mapFn(value)
+      pushData(mappedValue)
+    })
+  }
+
+  /**
+   * Returns an {@link ObjectStream} consisting of replacing each element by all the elements of the array returned by the mapFn.
+   * <p>
+   *  This is an <strong>intermediate operation</strong>.
+   * <p/>
+   * @param mapFn Function that is called for every element of the stream. Each time mapFn executes, all the element in the returned array are pushed to the result stream.
+   * The mapFn function accepts one argument which is the current element processed in the stream.
+   * @return the new {@link ObjectStream}.
+   */
+  public flatMap<R>(mapFn: (value: T) => R[]): ObjectStream<R> {
+    return this.transformWith((value, pushData) => {
+      const mappedArrayValue = mapFn(value)
+      mappedArrayValue.forEach(pushData)
+    })
+  }
+
+  /**
+   * Returns an {@link ObjectStream} consisting of the elements that pass the test implemented by the provided filterFn.
+   * <p>
+   *  This is an <strong>intermediate operation</strong>.
+   * <p/>
+   * @param filterFn Function that is a predicate, to test each element of the stream. Return a value that coerces to true to keep the element, or to false otherwise.
+   * It accepts one argument which is the element processed in the stream.
+   * @return the new {@link ObjectStream}.
+   */
+  public filter<S extends T>(filterFn: ((value: T) => value is S) | ((value: T) => boolean)): ObjectStream<S> {
+    return this.transformWith((value, pushData) => {
+      if (filterFn(value)) {
+        pushData(value)
+      }
+    })
+  }
+
+  /**
+   * Returns an {@link ObjectStream} consisting of elements grouped by the result of getKeyFn.
+   * Each time the getKeyFn returns a different key, it considers the group is complete and push it to the result stream.
+   * This means for the result to be accurate your stream needs to be ordered by your key first or else you will have multiple {@link GroupingByKey} for the same key.
+   * This behaviour is to avoid loading all data into memory.
+   *
+   * <strong>NOTE</strong> : If a lot of elements are in the same group, that means that all these elements will be into memory.
+   * <p>
+   *  This is an <strong>intermediate operation</strong>.
+   * <p/>
+   * @param getKeyFn Function that is called for each element to know if current element should be grouped with the previous one.
+   * @return the new {@link ObjectStream}.
+   */
+  public groupByKey(getKeyFn: (value: T) => string): ObjectStream<GroupingByKey<T>> {
+    let currentGroupingByKey: GroupingByKey<T>
+
+    return this.transformWith(
+      (value, pushData) => {
+        const key = getKeyFn(value)
+
+        if (key !== currentGroupingByKey?.key) {
+          if (currentGroupingByKey) {
+            pushData(currentGroupingByKey)
+          }
+
+          currentGroupingByKey = {
+            key: key,
+            values: [],
+          }
+        }
+
+        currentGroupingByKey.values.push(value)
+      },
+      (pushData) => pushData(currentGroupingByKey)
+    )
+  }
+
+  /**
+   * Returns an {@link ObjectStream} consisting of an array of elements whose size depends on chunkSize.
+   * <p>
+   *  This is an <strong>intermediate operation</strong>.
+   * <p/>
+   * @param chunkSize size of the chunks
+   * @return the new {@link ObjectStream}.
+   */
+  public groupByChunk(chunkSize: number): ObjectStream<T[]> {
+    let chunkArray: T[] = []
+    return this.transformWith(
+      (value, pushData) => {
+        chunkArray.push(value)
+
+        if (chunkArray.length >= chunkSize) {
+          pushData(chunkArray)
+          chunkArray = []
+        }
+      },
+      (pushData) => {
+        if (chunkArray.length > 0) {
+          pushData(chunkArray)
+        }
+      }
+    )
+  }
+
+  /**
+   * Returns an {@link ObjectStream} consisting of the elements pushed in the given function.
+   * This method is to add a generic operation in case none of the existing ones correspond to your needs.
+   * <p>
+   *  This is an <strong>intermediate operation</strong>.
+   * <p/>
+   * @param transformFn Function that is called for each element of the stream. It takes two arguments.
+   * <p>The first argument is the current element processed by the stream.</p>
+   * <p>The second argument is a function called pushData with takes in parameter the transformed value.</p>
+   * See other intermediate operations like {@link map} and {@link filter} for examples.
+   *
+   * @param onEnd Function that is called at the end of the stream once all data have been processed.
+   * @return the new {@link ObjectStream}.
+   */
+  public transformWith<R>(
+    transformFn: (value: T, pushData: (data: R) => void) => void | Promise<void>,
+    onEnd?: (pushData: (data: R) => void) => void
+  ): ObjectStream<R> {
+    const transform = this.createTransform(transformFn, onEnd)
+    return new ObjectStream(this.stream, [...this.intermediateOperations, transform])
+  }
+
+  /**
+   * Return all the elements of the stream in an array.
+   * <p>
+   *  This is a <strong>terminal operation</strong>.
+   * <p/>
+   * @return a Promise which is
+   * - resolved once all the stream is processed with an array containing all the elements of the stream
+   * - or rejected with the error raised during the processing of the stream if there is one.
+   */
+  public async toArray(): Promise<T[]> {
+    const array: T[] = []
+    await this.forEach((value) => {
+      array.push(value)
+    })
+
+    return array
+  }
+
+  /**
+   * Apply the given function to each element of the stream before closing it.
+   * <p>
+   *  This is a <strong>terminal operation</strong>.
+   * <p/>
+   * @param fn Function that is called for each element of the stream. It can be an async function.
+   * @return a Promise which is
+   * - resolved once all the stream is processed
+   * - or rejected with the error raised during the processing of the stream if there is one.
+   */
+  async forEach(fn: (value: T) => void | Promise<void>): Promise<void> {
+    const forEachStream = new Writable({
+      objectMode: true,
+      write: async (value: T, encoding: BufferEncoding, callback: (error?: Error | null) => void) => {
+        try {
+          await fn(value)
+          callback()
+        } catch (e) {
+          if (e instanceof Error) callback(e)
+          else callback(new StreamError(e))
+        }
+      },
+    })
+
+    await this.writeTo(forEachStream)
+  }
+
+  /**
+   * Pass each element to the writable stream.
+   * <p>
+   *  This is a <strong>terminal operation</strong>.
+   * <p/>
+   * @param writable Writable stream to write data to their destination.
+   * @return a Promise which is
+   * - resolved once all the stream is processed
+   * - or rejected with the error raised during the processing of the stream if there is one.
+   */
+  async writeTo(writable: Writable): Promise<void> {
+    await pipeline([this.stream, ...this.intermediateOperations, writable])
+  }
+
+  private createTransform<R>(
+    transform: (value: T, pushData: (data: R) => void) => void | Promise<void>,
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    onEnd: (pushData: (data: R) => void) => void = () => {}
+  ): Transform {
+    return new Transform({
+      objectMode: true,
+
+      transform: async function (value, encoding, callback) {
+        try {
+          await transform(value, (data) => this.push(data))
+          callback()
+        } catch (e) {
+          if (e instanceof Error) callback(e)
+          else callback(new StreamError(e))
+        }
+      },
+      flush(callback) {
+        onEnd((data) => this.push(data))
+        callback()
+      },
+    })
+  }
+}
+
+export interface GroupingByKey<T> {
+  key: string
+  values: T[]
+}
+
+class StreamError extends Error {
+  constructor(public readonly cause: unknown) {
+    super('Error during stream. See cause for more information.')
+  }
+}
