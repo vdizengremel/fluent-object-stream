@@ -1,4 +1,4 @@
-import ObjectStream from './object-stream'
+import ObjectStream, { GroupingByKey } from './object-stream'
 import { Readable, Transform, TransformCallback } from 'stream'
 import { setTimeout as wait } from 'timers/promises'
 import * as fs from 'fs'
@@ -170,10 +170,10 @@ describe('ObjectStream', () => {
       const objectStream: ObjectStream<TestObject> = createObjectStreamFromArray(testArray)
 
       const resultStream = objectStream.groupByKey((value) => value.type)
-      expect(await resultStream.toArray()).toEqual([
+      expect(await resultStream.toArray()).toEqual<GroupingByKey<TestObject>[]>([
         {
           key: '1',
-          values: [
+          groupedValues: [
             {
               type: '1',
               value: 2,
@@ -186,7 +186,7 @@ describe('ObjectStream', () => {
         },
         {
           key: '2',
-          values: [
+          groupedValues: [
             {
               type: '2',
               value: 4,

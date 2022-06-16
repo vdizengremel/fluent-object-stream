@@ -116,11 +116,11 @@ export default class ObjectStream<T> {
 
           currentGroupingByKey = {
             key: key,
-            values: [],
+            groupedValues: [],
           }
         }
 
-        currentGroupingByKey.values.push(value)
+        currentGroupingByKey.groupedValues.push(value)
       },
       onEnd: (pushData) => {
         if (currentGroupingByKey) {
@@ -237,7 +237,7 @@ export default class ObjectStream<T> {
 
 export interface GroupingByKey<T> {
   key: string
-  values: T[]
+  groupedValues: T[]
 }
 
 class StreamError extends Error {
