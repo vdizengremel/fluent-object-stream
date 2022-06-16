@@ -112,7 +112,11 @@ export default class ObjectStream<T> {
 
         currentGroupingByKey.values.push(value)
       },
-      (pushData) => pushData(currentGroupingByKey)
+      (pushData) => {
+        if (currentGroupingByKey) {
+          pushData(currentGroupingByKey)
+        }
+      }
     )
   }
 

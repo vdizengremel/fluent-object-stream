@@ -205,6 +205,15 @@ describe('ObjectStream', () => {
 
       await expect(resultStream.toArray()).rejects.toEqual(new Error('Error during groupByKey'))
     })
+
+    it('should stay empty when empty stream', async () => {
+      const streamUtils: ObjectStream<TestObject> = ObjectStream.ofReadable(Readable.from([]))
+
+      const resultStream = streamUtils.groupByKey((testObject) => testObject.type)
+
+      const array = await resultStream.toArray()
+      expect(array.length).toEqual(0)
+    })
   })
 
   describe('#forEach', () => {
