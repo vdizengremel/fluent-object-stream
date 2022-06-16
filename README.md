@@ -1,4 +1,4 @@
-# object-stream
+# fluent-object-stream
 This is a library to facilitate the transformation of object in steams while being strongly typed.
 It is built on node transform streams and node pipeline to execute all transformations, handle errors and end streams correctly.
 
