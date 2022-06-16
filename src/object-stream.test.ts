@@ -1,5 +1,5 @@
 import ObjectStream from './object-stream'
-import { Readable } from 'stream'
+import { Readable, Transform, TransformCallback } from 'stream'
 import { setTimeout as wait } from 'timers/promises'
 import * as fs from 'fs'
 import * as Path from 'path'
@@ -285,7 +285,7 @@ describe('ObjectStream', () => {
         pushData(value)
       }
 
-      const transformed = objectStream.transformWith(duplicateAllValues)
+      const transformed = objectStream.transformWith({ transformElement: duplicateAllValues })
 
       const streamContent = await transformed.toArray()
       expect(streamContent).toEqual(['1', '1', '2', '2', '3', '3'])
@@ -299,10 +299,26 @@ describe('ObjectStream', () => {
       }
 
       const addValueAtEnd = (pushData: (data: string) => void) => pushData('4')
-      const transformed = objectStream.transformWith(passThrough, addValueAtEnd)
+      const transformed = objectStream.transformWith({ transformElement: passThrough, onEnd: addValueAtEnd })
 
       const streamContent = await transformed.toArray()
       expect(streamContent).toEqual(['1', '2', '3', '4'])
+    })
+  })
+
+  describe('#addTransform', () => {
+    it('should execute added transform on terminal operation', async () => {
+      const objectStream = createObjectStreamFromArray(['1', '2', '3'])
+      const doubleValueTransform = new Transform({
+        objectMode: true,
+        transform(chunk: number, encoding: BufferEncoding, callback: TransformCallback) {
+          callback(null, chunk * 2)
+        },
+      })
+
+      const objectStreamWithTransform: ObjectStream<number> = objectStream.addTransform<number>(doubleValueTransform)
+
+      expect(await objectStreamWithTransform.toArray()).toEqual([2, 4, 6])
     })
   })
 })

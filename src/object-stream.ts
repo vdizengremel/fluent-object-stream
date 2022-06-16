@@ -1,5 +1,7 @@
 import { Readable, Transform, Writable } from 'stream'
 import { pipeline } from 'stream/promises'
+import { createTransform } from '.'
+import ObjectTransform from './object-transform'
 
 /**
  * This is a class to facilitate the transformation of data in a stream. The generic type represent the type of the data in the stream.
@@ -23,9 +25,11 @@ export default class ObjectStream<T> {
    * @return the new {@link ObjectStream}.
    */
   public map<R>(mapFn: (value: T) => R): ObjectStream<R> {
-    return this.transformWith((value, pushData) => {
-      const mappedValue = mapFn(value)
-      pushData(mappedValue)
+    return this.transformWith({
+      transformElement: (value, pushData) => {
+        const mappedValue = mapFn(value)
+        pushData(mappedValue)
+      },
     })
   }
 
@@ -40,9 +44,11 @@ export default class ObjectStream<T> {
    * @return the new {@link ObjectStream}.
    */
   public mapAsync<R>(mapFn: (value: T) => Promise<R>): ObjectStream<R> {
-    return this.transformWith(async (value, pushData) => {
-      const mappedValue = await mapFn(value)
-      pushData(mappedValue)
+    return this.transformWith({
+      transformElement: async (value, pushData) => {
+        const mappedValue = await mapFn(value)
+        pushData(mappedValue)
+      },
     })
   }
 
@@ -56,9 +62,11 @@ export default class ObjectStream<T> {
    * @return the new {@link ObjectStream}.
    */
   public flatMap<R>(mapFn: (value: T) => R[]): ObjectStream<R> {
-    return this.transformWith((value, pushData) => {
-      const mappedArrayValue = mapFn(value)
-      mappedArrayValue.forEach(pushData)
+    return this.transformWith({
+      transformElement: (value, pushData) => {
+        const mappedArrayValue = mapFn(value)
+        mappedArrayValue.forEach(pushData)
+      },
     })
   }
 
@@ -72,10 +80,12 @@ export default class ObjectStream<T> {
    * @return the new {@link ObjectStream}.
    */
   public filter<S extends T>(filterFn: ((value: T) => value is S) | ((value: T) => boolean)): ObjectStream<S> {
-    return this.transformWith((value, pushData) => {
-      if (filterFn(value)) {
-        pushData(value)
-      }
+    return this.transformWith({
+      transformElement: (value, pushData) => {
+        if (filterFn(value)) {
+          pushData(value)
+        }
+      },
     })
   }
 
@@ -95,8 +105,8 @@ export default class ObjectStream<T> {
   public groupByKey(getKeyFn: (value: T) => string): ObjectStream<GroupingByKey<T>> {
     let currentGroupingByKey: GroupingByKey<T>
 
-    return this.transformWith(
-      (value, pushData) => {
+    return this.transformWith({
+      transformElement: (value, pushData) => {
         const key = getKeyFn(value)
 
         if (key !== currentGroupingByKey?.key) {
@@ -112,12 +122,12 @@ export default class ObjectStream<T> {
 
         currentGroupingByKey.values.push(value)
       },
-      (pushData) => {
+      onEnd: (pushData) => {
         if (currentGroupingByKey) {
           pushData(currentGroupingByKey)
         }
-      }
-    )
+      },
+    })
   }
 
   /**
@@ -130,8 +140,8 @@ export default class ObjectStream<T> {
    */
   public groupByChunk(chunkSize: number): ObjectStream<T[]> {
     let chunkArray: T[] = []
-    return this.transformWith(
-      (value, pushData) => {
+    return this.transformWith({
+      transformElement: (value, pushData) => {
         chunkArray.push(value)
 
         if (chunkArray.length >= chunkSize) {
@@ -139,33 +149,29 @@ export default class ObjectStream<T> {
           chunkArray = []
         }
       },
-      (pushData) => {
+      onEnd: (pushData) => {
         if (chunkArray.length > 0) {
           pushData(chunkArray)
         }
-      }
-    )
+      },
+    })
   }
 
   /**
-   * Returns an {@link ObjectStream} consisting of the elements pushed in the given function.
+   * Returns an {@link ObjectStream} consisting of the elements pushed in the given parameter.
    * This method is to add a generic operation in case none of the existing ones correspond to your needs.
    * <p>
    *  This is an <strong>intermediate operation</strong>.
    * <p/>
-   * @param transformFn Function that is called for each element of the stream. It takes two arguments.
-   * <p>The first argument is the current element processed by the stream.</p>
-   * <p>The second argument is a function called pushData with takes in parameter the transformed value.</p>
-   * See other intermediate operations like {@link map} and {@link filter} for examples.
-   *
-   * @param onEnd Function that is called at the end of the stream once all data have been processed.
+   * @param objectTransform {@link ObjectTransform} which represents the transformation to apply.
    * @return the new {@link ObjectStream}.
    */
-  public transformWith<R>(
-    transformFn: (value: T, pushData: (data: R) => void) => void | Promise<void>,
-    onEnd?: (pushData: (data: R) => void) => void
-  ): ObjectStream<R> {
-    const transform = this.createTransform(transformFn, onEnd)
+  public transformWith<R>(objectTransform: ObjectTransform<T, R>): ObjectStream<R> {
+    const transform = createTransform(objectTransform)
+    return this.addTransform(transform)
+  }
+
+  public addTransform<R>(transform: Transform): ObjectStream<R> {
     return new ObjectStream(this.stream, [...this.intermediateOperations, transform])
   }
 
@@ -226,30 +232,6 @@ export default class ObjectStream<T> {
    */
   async writeTo(writable: Writable): Promise<void> {
     await pipeline([this.stream, ...this.intermediateOperations, writable])
-  }
-
-  private createTransform<R>(
-    transform: (value: T, pushData: (data: R) => void) => void | Promise<void>,
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    onEnd: (pushData: (data: R) => void) => void = () => {}
-  ): Transform {
-    return new Transform({
-      objectMode: true,
-
-      transform: async function (value, encoding, callback) {
-        try {
-          await transform(value, (data) => this.push(data))
-          callback()
-        } catch (e) {
-          if (e instanceof Error) callback(e)
-          else callback(new StreamError(e))
-        }
-      },
-      flush(callback) {
-        onEnd((data) => this.push(data))
-        callback()
-      },
-    })
   }
 }
 

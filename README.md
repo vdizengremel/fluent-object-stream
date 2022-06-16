@@ -81,7 +81,7 @@ const duplicateAllValues = (value: string, pushData: (data: string) => void) => 
   pushData(value)
 }
 
-const transformed = objectStream.transformWith(duplicateAllValues)
+const transformed = objectStream.transformWith({ transformElement: duplicateAllValues })
 
 const streamContent = await transformed.toArray()
 expect(streamContent).toEqual(['1', '1', '2', '2', '3', '3'])
@@ -101,7 +101,7 @@ const addValuesAtEnd = (pushData: (data: string) => void) => {
   pushData('4')
 }
 
-const transformed = objectStream.transformWith(duplicateAllValues, addValuesAtEnd)
+const transformed = objectStream.transformWith({ transformElement: duplicateAllValues, onEnd: addValuesAtEnd })
 
 const streamContent = await transformed.toArray()
 expect(streamContent).toEqual(['1', '1', '2', '2', '3', '3', '4', '4'])
