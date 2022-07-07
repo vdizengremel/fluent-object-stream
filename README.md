@@ -109,6 +109,8 @@ expect(streamContent).toEqual(['1', '1', '2', '2', '3', '3', '4', '4'])
 
 All intermediate operations use `transformWith` internally. You can look at them for further examples.
 
+If you already have transform stream you want to reuse then you can do it with `applyTransform` method. Note you will have to specify the return type.
+
 ##### Tip about filter method
 If you have code like this :
 

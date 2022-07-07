@@ -306,7 +306,7 @@ describe('ObjectStream', () => {
     })
   })
 
-  describe('#addTransform', () => {
+  describe('#applyTransform', () => {
     it('should execute added transform on terminal operation', async () => {
       const objectStream = createObjectStreamFromArray(['1', '2', '3'])
       const doubleValueTransform = new Transform({
@@ -316,7 +316,7 @@ describe('ObjectStream', () => {
         },
       })
 
-      const objectStreamWithTransform: ObjectStream<number> = objectStream.addTransform<number>(doubleValueTransform)
+      const objectStreamWithTransform: ObjectStream<number> = objectStream.applyTransform<number>(doubleValueTransform)
 
       expect(await objectStreamWithTransform.toArray()).toEqual([2, 4, 6])
     })

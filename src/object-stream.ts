@@ -168,10 +168,18 @@ export default class ObjectStream<T> {
    */
   public transformWith<R>(objectTransform: ObjectTransform<T, R>): ObjectStream<R> {
     const transform = createTransform(objectTransform)
-    return this.addTransform(transform)
+    return this.applyTransform(transform)
   }
 
-  public addTransform<R>(transform: Transform): ObjectStream<R> {
+  /**
+   * Returns an {@link ObjectStream} consisting of the elements transformed by the given Transform parameter.
+   * <p>
+   *  This is an <strong>intermediate operation</strong>.
+   * <p/>
+   * @param transform which is a {@link Transform}.
+   * @return the new {@link ObjectStream}.
+   */
+  public applyTransform<R>(transform: Transform): ObjectStream<R> {
     return new ObjectStream(this.stream, [...this.intermediateOperations, transform])
   }
 
