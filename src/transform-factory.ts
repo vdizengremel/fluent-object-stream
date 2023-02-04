@@ -1,10 +1,21 @@
 import { Transform } from 'stream'
-import ObjectTransform from './object-transform'
+import { ObjectTransform, ObjectStreamOptions } from '.'
+import StreamError from './stream-error'
 
-export const createTransform: <T, R>(objectTransform: ObjectTransform<T, R>) => Transform = (objectTransform) => {
+/**
+ * Utility function to create {@link Transform} stream. It handles error to propagate them.
+ *
+ * @param objectTransform {@link ObjectTransform} representing the transformation to apply.
+ * @param options options to create the {@link Transform} stream.
+ * @return the created {@link Transform} stream.
+ */
+export function createTransform<T, R>(
+  objectTransform: ObjectTransform<T, R>,
+  options?: ObjectStreamOptions
+): Transform {
   return new Transform({
     objectMode: true,
-
+    highWaterMark: options?.highWaterMark,
     transform: async function (value, encoding, callback) {
       try {
         await objectTransform.transformElement(value, (data) => this.push(data))
@@ -15,14 +26,13 @@ export const createTransform: <T, R>(objectTransform: ObjectTransform<T, R>) => 
       }
     },
     flush(callback) {
-      objectTransform.onEnd?.((data) => this.push(data))
-      callback()
+      try {
+        objectTransform.onEnd?.((data) => this.push(data))
+        callback()
+      } catch (e) {
+        if (e instanceof Error) callback(e)
+        else callback(new StreamError(e))
+      }
     },
   })
-}
-
-class StreamError extends Error {
-  constructor(public readonly cause: unknown) {
-    super('Error during stream. See cause for more information.')
-  }
 }

@@ -1,8 +1,8 @@
-import ObjectStream, { GroupingByKey } from './object-stream'
+import { ObjectStream, GroupingByKey } from '.'
 import { Readable, Transform, TransformCallback } from 'stream'
 import { setTimeout as wait } from 'timers/promises'
-import * as fs from 'fs'
-import * as Path from 'path'
+import fs from 'fs'
+import Path from 'path'
 
 describe('ObjectStream', () => {
   function createObjectStreamFromArray<T>(array: T[]): ObjectStream<T> {
@@ -261,22 +261,29 @@ describe('ObjectStream', () => {
     const path = Path.join(__dirname, 'data.txt')
 
     afterEach(() => {
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
       fs.unlinkSync(path)
     })
 
     it('should write stream to given destination', async () => {
       const objectStream = createObjectStreamFromArray(['1', '2', '3'])
 
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
       const writeDestination = fs.createWriteStream(path, { encoding: 'utf8' })
 
       await objectStream.writeTo(writeDestination)
 
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
       const content = fs.readFileSync(path)
       expect(content.toString()).toEqual('123')
     })
   })
 
   describe('#transformWith', () => {
+    const passThrough = (value: string, pushData: (data: string) => void) => {
+      pushData(value)
+    }
+
     it('should transform data according to given function', async () => {
       const objectStream = createObjectStreamFromArray(['1', '2', '3'])
 
@@ -294,15 +301,37 @@ describe('ObjectStream', () => {
     it('should add data at end according to given function', async () => {
       const objectStream = createObjectStreamFromArray(['1', '2', '3'])
 
-      const passThrough = (value: string, pushData: (data: string) => void) => {
-        pushData(value)
-      }
-
       const addValueAtEnd = (pushData: (data: string) => void) => pushData('4')
       const transformed = objectStream.transformWith({ transformElement: passThrough, onEnd: addValueAtEnd })
 
       const streamContent = await transformed.toArray()
       expect(streamContent).toEqual(['1', '2', '3', '4'])
+    })
+
+    it('should reject when error during data transformation', async () => {
+      const objectStream = createObjectStreamFromArray(['1', '2', '3'])
+      const error = new Error('Error')
+      const transformed = objectStream.transformWith({
+        transformElement: () => {
+          throw error
+        },
+      })
+
+      await expect(transformed.toArray()).rejects.toEqual(error)
+    })
+
+    it('should reject when error at end', async () => {
+      const objectStream = createObjectStreamFromArray(['1', '2', '3'])
+      const error = new Error('Error')
+
+      const transformed = objectStream.transformWith({
+        transformElement: passThrough,
+        onEnd: () => {
+          throw error
+        },
+      })
+
+      await expect(transformed.toArray()).rejects.toEqual(error)
     })
   })
 
@@ -320,6 +349,138 @@ describe('ObjectStream', () => {
 
       expect(await objectStreamWithTransform.toArray()).toEqual([2, 4, 6])
     })
+  })
+
+  describe('to avoid increasing memory usage', () => {
+    const DEFAULT_HIGH_WATER_MARK = 16
+
+    it('should process data chunk by chunk', async () => {
+      const array = generateRangeFrom1To(100)
+      const objectStream: ObjectStream<number> = ObjectStream.ofReadable(Readable.from(array))
+
+      let mapCallNumber = 0
+      let forEachCallNumber = 0
+
+      const orderedCalled: string[] = []
+      const chunkSize = 10
+      await objectStream
+        .map((value) => {
+          mapCallNumber++
+          orderedCalled.push(`map${mapCallNumber}`)
+          return value
+        })
+        .groupByChunk(chunkSize)
+        .forEach(async () => {
+          await wait(20)
+          forEachCallNumber++
+          orderedCalled.push(`forEach${forEachCallNumber}`)
+        })
+
+      const numberOfOperationAfterGroupByChunk = 2 // include group by chunk
+      const nextDataToLoadAfterFirstForEach =
+        chunkSize * numberOfOperationAfterGroupByChunk + DEFAULT_HIGH_WATER_MARK + 1
+      expect(orderedCalled.indexOf(`map${nextDataToLoadAfterFirstForEach}`)).toBeGreaterThan(
+        orderedCalled.indexOf('forEach1')
+      )
+
+      const nextDataToLoadAfterSecondForEach = nextDataToLoadAfterFirstForEach + chunkSize
+
+      expect(orderedCalled.indexOf(`map${nextDataToLoadAfterSecondForEach}`)).toBeGreaterThan(
+        orderedCalled.indexOf('forEach2')
+      )
+    })
+
+    it('should process grouped data chunk by chunk', async () => {
+      const groupSize = 10
+      const array: TestObject[] = generateRangeFrom1To(100).map((value) => {
+        const decade = Math.ceil(value / groupSize) * groupSize
+        return {
+          type: `${decade}`,
+          value,
+        }
+      })
+
+      const streamUtils: ObjectStream<TestObject> = ObjectStream.ofReadable(Readable.from(array))
+
+      let mapCallNumber = 0
+      let forEachCallNumber = 0
+
+      const orderedCalled: string[] = []
+
+      await streamUtils
+        .map((value) => {
+          mapCallNumber++
+          orderedCalled.push(`map${mapCallNumber}`)
+          return value
+        })
+        .groupByKey((value) => {
+          return value.type
+        })
+        .forEach(async () => {
+          await wait(30)
+          forEachCallNumber++
+          orderedCalled.push(`forEach${forEachCallNumber}`)
+        })
+
+      const numberOfOperationAfterGroupBy = 2 // include group by
+      const nextDataToLoadAfterFirstForEach = groupSize * numberOfOperationAfterGroupBy + DEFAULT_HIGH_WATER_MARK + 2
+      expect(orderedCalled.indexOf(`map${nextDataToLoadAfterFirstForEach}`)).toBeGreaterThan(
+        orderedCalled.indexOf('forEach1')
+      )
+
+      const nextDataToLoadAfterSecondForEach = nextDataToLoadAfterFirstForEach + groupSize
+
+      expect(orderedCalled.indexOf(`map${nextDataToLoadAfterSecondForEach}`)).toBeGreaterThan(
+        orderedCalled.indexOf('forEach2')
+      )
+    })
+
+    it('should process grouped data chunk by chunk even for further operations', async () => {
+      const groupSize = 10
+      const array: TestObject[] = generateRangeFrom1To(100).map((value) => {
+        const decade = Math.ceil(value / groupSize) * groupSize
+        return {
+          type: `${decade}`,
+          value,
+        }
+      })
+
+      const streamUtils: ObjectStream<TestObject> = ObjectStream.ofReadable(Readable.from(array))
+
+      let mapAfterGroupByChunkCallNumber = 0
+      let forEachCallNumber = 0
+
+      const orderedCalled: string[] = []
+
+      await streamUtils
+        .groupByKey((value) => {
+          return value.type
+        })
+        .map((value) => {
+          mapAfterGroupByChunkCallNumber++
+          orderedCalled.push(`mapAfterGroupByChunk${mapAfterGroupByChunkCallNumber}`)
+          return value
+        })
+        .forEach(async () => {
+          await wait(30)
+          forEachCallNumber++
+          orderedCalled.push(`forEach${forEachCallNumber}`)
+        })
+
+      expect(orderedCalled.indexOf('mapAfterGroupByChunk3')).toBeGreaterThan(orderedCalled.indexOf('forEach1'))
+
+      expect(orderedCalled.indexOf('mapAfterGroupByChunk4')).toBeGreaterThan(orderedCalled.indexOf('forEach2'))
+    })
+
+    function generateRangeFrom1To(limit: number): number[] {
+      const array: number[] = []
+
+      for (let i = 1; i <= limit; i++) {
+        array.push(i)
+      }
+
+      return array
+    }
   })
 })
 

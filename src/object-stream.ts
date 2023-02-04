@@ -1,14 +1,17 @@
 import { Readable, Transform, Writable } from 'stream'
 import { pipeline } from 'stream/promises'
-import { createTransform } from '.'
-import ObjectTransform from './object-transform'
+import { createTransform, ObjectTransform, ObjectStreamOptions, StreamError } from '.'
 
 /**
  * This is a class to facilitate the transformation of data in a stream. The generic type represent the type of the data in the stream.
  * All methods allow to keep a strongly typed system.
  */
 export default class ObjectStream<T> {
-  private constructor(private readonly stream: Readable, private readonly intermediateOperations: Transform[] = []) {}
+  private constructor(
+    private readonly stream: Readable,
+    private readonly intermediateOperations: Transform[] = [],
+    private readonly options?: ObjectStreamOptions
+  ) {}
 
   static ofReadable<T>(readable: Readable): ObjectStream<T> {
     return new ObjectStream<T>(readable)
@@ -105,29 +108,34 @@ export default class ObjectStream<T> {
   public groupByKey(getKeyFn: (value: T) => string): ObjectStream<GroupingByKey<T>> {
     let currentGroupingByKey: GroupingByKey<T>
 
-    return this.transformWith({
-      transformElement: (value, pushData) => {
-        const key = getKeyFn(value)
+    return this.transformWith(
+      {
+        transformElement: (value, pushData) => {
+          const key = getKeyFn(value)
 
-        if (key !== currentGroupingByKey?.key) {
+          if (key !== currentGroupingByKey?.key) {
+            if (currentGroupingByKey) {
+              pushData(currentGroupingByKey)
+            }
+
+            currentGroupingByKey = {
+              key: key,
+              groupedValues: [],
+            }
+          }
+
+          currentGroupingByKey.groupedValues.push(value)
+        },
+        onEnd: (pushData) => {
           if (currentGroupingByKey) {
             pushData(currentGroupingByKey)
           }
-
-          currentGroupingByKey = {
-            key: key,
-            groupedValues: [],
-          }
-        }
-
-        currentGroupingByKey.groupedValues.push(value)
+        },
       },
-      onEnd: (pushData) => {
-        if (currentGroupingByKey) {
-          pushData(currentGroupingByKey)
-        }
-      },
-    })
+      {
+        highWaterMark: 1,
+      }
+    )
   }
 
   /**
@@ -140,21 +148,26 @@ export default class ObjectStream<T> {
    */
   public groupByChunk(chunkSize: number): ObjectStream<T[]> {
     let chunkArray: T[] = []
-    return this.transformWith({
-      transformElement: (value, pushData) => {
-        chunkArray.push(value)
+    return this.transformWith(
+      {
+        transformElement: (value, pushData) => {
+          chunkArray.push(value)
 
-        if (chunkArray.length >= chunkSize) {
-          pushData(chunkArray)
-          chunkArray = []
-        }
+          if (chunkArray.length >= chunkSize) {
+            pushData(chunkArray)
+            chunkArray = []
+          }
+        },
+        onEnd: (pushData) => {
+          if (chunkArray.length > 0) {
+            pushData(chunkArray)
+          }
+        },
       },
-      onEnd: (pushData) => {
-        if (chunkArray.length > 0) {
-          pushData(chunkArray)
-        }
-      },
-    })
+      {
+        highWaterMark: 1,
+      }
+    )
   }
 
   /**
@@ -164,11 +177,12 @@ export default class ObjectStream<T> {
    *  This is an <strong>intermediate operation</strong>.
    * <p/>
    * @param objectTransform {@link ObjectTransform} which represents the transformation to apply.
+   * @param options {@link ObjectStreamOptions} to override for current and next operation.
    * @return the new {@link ObjectStream}.
    */
-  public transformWith<R>(objectTransform: ObjectTransform<T, R>): ObjectStream<R> {
-    const transform = createTransform(objectTransform)
-    return this.applyTransform(transform)
+  public transformWith<R>(objectTransform: ObjectTransform<T, R>, options?: ObjectStreamOptions): ObjectStream<R> {
+    const transform = createTransform(objectTransform, { ...this.options, ...options })
+    return this.applyTransform(transform, options)
   }
 
   /**
@@ -177,10 +191,11 @@ export default class ObjectStream<T> {
    *  This is an <strong>intermediate operation</strong>.
    * <p/>
    * @param transform which is a {@link Transform}.
+   * @param options {@link ObjectStreamOptions} to override for next operations
    * @return the new {@link ObjectStream}.
    */
-  public applyTransform<R>(transform: Transform): ObjectStream<R> {
-    return new ObjectStream(this.stream, [...this.intermediateOperations, transform])
+  public applyTransform<R>(transform: Transform, options: ObjectStreamOptions = {}): ObjectStream<R> {
+    return new ObjectStream(this.stream, [...this.intermediateOperations, transform], { ...this.options, ...options })
   }
 
   /**
@@ -214,6 +229,7 @@ export default class ObjectStream<T> {
   async forEach(fn: (value: T) => void | Promise<void>): Promise<void> {
     const forEachStream = new Writable({
       objectMode: true,
+      highWaterMark: this.options?.highWaterMark,
       write: async (value: T, encoding: BufferEncoding, callback: (error?: Error | null) => void) => {
         try {
           await fn(value)
@@ -246,10 +262,4 @@ export default class ObjectStream<T> {
 export interface GroupingByKey<T> {
   key: string
   groupedValues: T[]
-}
-
-class StreamError extends Error {
-  constructor(public readonly cause: unknown) {
-    super('Error during stream. See cause for more information.')
-  }
 }

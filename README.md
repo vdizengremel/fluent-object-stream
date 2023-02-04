@@ -127,3 +127,19 @@ const childStream = objectStream.filter((person): person is Child => person.isCh
 ```
 
 `childStream` is now an `ObjectStream<Child>`. Note that the way filter is type is the same as the filter method of arrays. It means filter method on arrays supports the same syntax.
+
+#### Pass final operation to another library
+You could need to pass the last operation to another library that will write data somewhere (it could be sending it to file storage or to HTTP response). This library allows you to do it like this :
+
+```typescript
+import { createTransform } from '.'
+
+const objectStream: ObjectStream<any> = getStreamFromSomeWhere()
+const transform = createTransform(/* Take a transformation operation. See documentation on this exported function from this lib. */)
+
+// You can now pass this transform to the external lib you need to use and then write your data into it like this :
+await Promise.all([
+  objectStream.writeTo(transform),
+  anyExternalLib.uploadStream(transform),
+])
+```
