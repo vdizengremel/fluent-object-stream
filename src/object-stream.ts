@@ -74,6 +74,24 @@ export default class ObjectStream<T> {
   }
 
   /**
+   * Returns an {@link ObjectStream} consisting of replacing each element by all the elements of the array resolved by the mapFn.
+   * <p>
+   *  This is an <strong>intermediate operation</strong>.
+   * <p/>
+   * @param mapFn Function that is called for every element of the stream. Each time mapFn executes, all the element in the resolved array are pushed to the result stream.
+   * The mapFn function accepts one argument which is the current element processed in the stream.
+   * @return the new {@link ObjectStream}.
+   */
+  public flatMapAsync<R>(mapFn: (value: T) => Promise<R[]>): ObjectStream<R> {
+    return this.transformWith({
+      transformElement: async (value, pushData) => {
+        const mappedArrayValue = await mapFn(value)
+        mappedArrayValue.forEach(pushData)
+      },
+    })
+  }
+
+  /**
    * Returns an {@link ObjectStream} consisting of the elements that pass the test implemented by the provided filterFn.
    * <p>
    *  This is an <strong>intermediate operation</strong>.

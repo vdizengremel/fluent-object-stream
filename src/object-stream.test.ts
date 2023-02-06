@@ -122,6 +122,51 @@ describe('ObjectStream', () => {
     })
   })
 
+  describe('#flatMapAsync', () => {
+    it('should flat resolving array of transform function into multiple values in stream ', async () => {
+      const testArray: TestObject[][] = [
+        [
+          {
+            type: '1',
+            value: 1,
+          },
+          {
+            type: '2',
+            value: 2,
+          },
+        ],
+        [
+          {
+            type: '1',
+            value: 3,
+          },
+        ],
+      ]
+
+      const objectStream: ObjectStream<TestObject[]> = createObjectStreamFromArray(testArray)
+
+      const resultStream = objectStream.flatMapAsync(async (value) => {
+        await wait(10)
+        return value
+      })
+
+      expect(await resultStream.toArray()).toEqual([
+        {
+          type: '1',
+          value: 1,
+        },
+        {
+          type: '2',
+          value: 2,
+        },
+        {
+          type: '1',
+          value: 3,
+        },
+      ])
+    })
+  })
+
   describe('#filter', () => {
     it('should filter stream', async () => {
       const objectStream: ObjectStream<number> = createObjectStreamFromArray([1, 2, 3])
