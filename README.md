@@ -1,5 +1,14 @@
+![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white)
 [![CI](https://github.com/vdizengremel/fluent-object-stream/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/vdizengremel/fluent-object-stream/actions/workflows/ci.yml)
 [![Coverage Status](https://coveralls.io/repos/github/vdizengremel/fluent-object-stream/badge.svg?branch=main)](https://coveralls.io/github/vdizengremel/fluent-object-stream?branch=main)
+[![npm version](https://img.shields.io/npm/v/fluent-object-stream.svg)](https://www.npmjs.com/package/fluent-object-stream)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Known Vulnerabilities](https://snyk.io/test/github/vdizengremel/fluent-object-stream/badge.svg)](https://snyk.io/test/github/vdizengremel/fluent-object-stream)
+[![Last Commit](https://img.shields.io/github/last-commit/vdizengremel/fluent-object-stream.svg)](https://github.com/vdizengremel/fluent-object-stream/commits/main)
+[![Bundle Size](https://img.shields.io/bundlephobia/minzip/fluent-object-stream.svg)](https://bundlephobia.com/result?p=fluent-object-stream)
+[![npm downloads](https://img.shields.io/npm/dm/fluent-object-stream.svg)](https://www.npmjs.com/package/fluent-object-stream)
+
+[//]: # ([![GitHub release]&#40;https://img.shields.io/github/v/release/vdizengremel/fluent-object-stream&#41;]&#40;https://github.com/vdizengremel/fluent-object-stream/releases&#41;)
 
 # fluent-object-stream
 This is a library to facilitate the transformation of object in steams while being strongly typed.
