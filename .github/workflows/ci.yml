@@ -4,7 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+    branches: [main]
 
+# Variables centralisées
 env:
   CURRENT_SUPPORTED_NODE_VERSION: 22
   PREVIOUS_SUPPORTED_NODE_VERSION: 20
@@ -17,19 +19,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.CURRENT_SUPPORTED_NODE_VERSION }}
+          cache: npm
       - run: npm ci
       - run: npm run lint
 
   test:
-    name: test (node ${{ matrix.node }})
+    name: tests (node ${{ matrix.node }})
     runs-on: ubuntu-latest
     strategy:
-      matrix: { node: [ ${{ env.PREVIOUS_SUPPORTED_NODE_VERSION }}, ${{ env.CURRENT_SUPPORTED_NODE_VERSION }} ] }
+      matrix:
+        node: [${{ env.PREVIOUS_SUPPORTED_NODE_VERSION }}, ${{ env.CURRENT_SUPPORTED_NODE_VERSION }}]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.CURRENT_SUPPORTED_NODE_VERSION }}
+          node-version: ${{ matrix.node }}
+          cache: npm
       - run: npm ci
       - run: npm test -- --coverage
 
@@ -41,5 +46,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.CURRENT_SUPPORTED_NODE_VERSION }}
+          cache: npm
       - run: npm ci
       - run: npm run build
