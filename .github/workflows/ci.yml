@@ -18,17 +18,12 @@ jobs:
 
   # 2. Job lint qui utilise la matrix
   lint:
-    name: lint (node ${{ matrix.node }})
-    needs: set-matrix
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node: ${{ fromJSON(needs.set-matrix.outputs.node) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 22
       - run: npm ci
       - run: npm run lint
 
