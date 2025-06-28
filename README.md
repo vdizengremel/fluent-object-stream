@@ -1,3 +1,6 @@
+[![CI](https://github.com/vdizengremel/fluent-object-stream/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/vdizengremel/fluent-object-stream/actions/workflows/ci.yml)
+[![Coverage Status](https://coveralls.io/repos/github/vdizengremel/fluent-object-stream/badge.svg?branch=main)](https://coveralls.io/github/vdizengremel/fluent-object-stream?branch=main)
+
 # fluent-object-stream
 This is a library to facilitate the transformation of object in steams while being strongly typed.
 It is built on node transform streams and node pipeline to execute all transformations, handle errors and end streams correctly.
