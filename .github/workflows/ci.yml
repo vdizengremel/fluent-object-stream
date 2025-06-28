@@ -4,35 +4,51 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
 
 jobs:
-  lint:
+  # 1. Ce job génère un output avec la matrix
+  set-matrix:
     runs-on: ubuntu-latest
+    outputs:
+      node: ${{ steps.set.outputs.node }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run lint
+      - id: set
+        run: |
+          echo "node=[\"20\",\"22\"]" >> "$GITHUB_OUTPUT"
 
-  test:
-    name: tests (node ${{ matrix.node }})
+  # 2. Job lint qui utilise la matrix
+  lint:
+    name: lint (node ${{ matrix.node }})
+    needs: set-matrix
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [20, 22]
+        node: ${{ fromJSON(needs.set-matrix.outputs.node) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-          cache: npm
+      - run: npm ci
+      - run: npm run lint
+
+  # 3. Job test avec la même matrix
+  test:
+    name: test (node ${{ matrix.node }})
+    needs: set-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ${{ fromJSON(needs.set-matrix.outputs.node) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
       - run: npm ci
       - run: npm test -- --coverage
 
+  # 4. Job build sans matrix (juste une fois)
   build:
     needs: test
     runs-on: ubuntu-latest
@@ -41,6 +57,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
       - run: npm ci
       - run: npm run build
