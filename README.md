@@ -29,7 +29,7 @@ Want to know more ? Just continue reading ;)
 ### Installation
 
 To install the library :
-`npm install object-stream` or `yarn add object-stream`
+`npm install fluent-object-stream` or `yarn add fluent-object-stream`
 
 ### Instantiation
 To instantiate it : `ObjectStream.ofReadable<Person>(readable)`. 
