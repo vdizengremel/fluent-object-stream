@@ -31,6 +31,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test -- --coverage
+      - name: Coveralls
+        uses: coverallsapp/github-action@v2
+        if: matrix.node == 22
 
   build:
     needs: test
