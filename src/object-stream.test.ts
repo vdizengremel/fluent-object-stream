@@ -3,6 +3,7 @@ import { Readable, Transform, TransformCallback } from 'stream'
 import { setTimeout as wait } from 'timers/promises'
 import fs from 'fs'
 import Path from 'path'
+import StreamError from './stream-error'
 
 describe('ObjectStream', () => {
   function createObjectStreamFromArray<T>(array: T[]): ObjectStream<T> {
@@ -296,6 +297,20 @@ describe('ObjectStream', () => {
       await expect(promise).rejects.toEqual(new Error('Error during for each'))
     })
 
+    it('should reject a stream error if the occurred error is not from error type', async () => {
+      const objectStream: ObjectStream<number> = createObjectStreamFromArray([1, 2, 3])
+
+      const promise = objectStream.forEach(() => {
+        throw 'Not a real error'
+      })
+
+      await expect(promise).rejects.toBeInstanceOf(StreamError)
+
+      await promise.catch((err) => {
+        expect(err).toHaveProperty('cause', 'Not a real error')
+      })
+    })
+
     async function asyncOperation(value: number, arr: number[]) {
       await wait(10)
       arr.push(value)
@@ -377,6 +392,43 @@ describe('ObjectStream', () => {
       })
 
       await expect(transformed.toArray()).rejects.toEqual(error)
+    })
+
+    it('should reject a stream error if the occurred error during transform is not from error type', async () => {
+      const objectStream: ObjectStream<number> = createObjectStreamFromArray([1, 2, 3])
+
+      const transformed = objectStream.transformWith({
+        transformElement: () => {
+          throw 'Not a real error'
+        },
+      })
+
+      const promise = transformed.toArray()
+
+      await expect(promise).rejects.toBeInstanceOf(StreamError)
+
+      await promise.catch((err) => {
+        expect(err).toHaveProperty('cause', 'Not a real error')
+      })
+    })
+
+    it('should reject a stream error if the occurred error during end is not from error type', async () => {
+      const objectStream = createObjectStreamFromArray(['1', '2', '3'])
+
+      const transformed = objectStream.transformWith({
+        transformElement: passThrough,
+        onEnd: () => {
+          throw 'Not a real error'
+        },
+      })
+
+      const promise = transformed.toArray()
+
+      await expect(promise).rejects.toBeInstanceOf(StreamError)
+
+      await promise.catch((err) => {
+        expect(err).toHaveProperty('cause', 'Not a real error')
+      })
     })
   })
 
