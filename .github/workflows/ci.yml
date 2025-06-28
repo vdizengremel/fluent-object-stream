@@ -18,6 +18,7 @@ jobs:
 
   # 2. Job lint qui utilise la matrix
   lint:
+    name: lint (node ${{ matrix.node }})
     needs: set-matrix
     runs-on: ubuntu-latest
     strategy:
@@ -33,6 +34,7 @@ jobs:
 
   # 3. Job test avec la même matrix
   test:
+    name: test (node ${{ matrix.node }})
     needs: set-matrix
     runs-on: ubuntu-latest
     strategy:
