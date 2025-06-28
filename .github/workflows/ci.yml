@@ -6,17 +6,6 @@ on:
   pull_request:
 
 jobs:
-  # 1. Ce job génère un output avec la matrix
-  set-matrix:
-    runs-on: ubuntu-latest
-    outputs:
-      node: ${{ steps.set.outputs.node }}
-    steps:
-      - id: set
-        run: |
-          echo "node=[\"20\",\"22\"]" >> "$GITHUB_OUTPUT"
-
-  # 2. Job lint qui utilise la matrix
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -27,10 +16,8 @@ jobs:
       - run: npm ci
       - run: npm run lint
 
-  # 3. Job test avec la même matrix
   test:
     name: test (node ${{ matrix.node }})
-    needs: set-matrix
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -43,7 +30,6 @@ jobs:
       - run: npm ci
       - run: npm test -- --coverage
 
-  # 4. Job build sans matrix (juste une fois)
   build:
     needs: test
     runs-on: ubuntu-latest
