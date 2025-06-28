@@ -1,13 +1,13 @@
 name: CI
 
-env:
-  CURRENT_SUPPORTED_NODE_VERSION: 22
-  PREVIOUS_SUPPORTED_NODE_VERSION: 20
-
 on:
   push:
     branches: [main]
   pull_request:
+
+env:
+  CURRENT_SUPPORTED_NODE_VERSION: 22
+  PREVIOUS_SUPPORTED_NODE_VERSION: 20
 
 jobs:
   lint:
