@@ -2,14 +2,17 @@
   "compilerOptions": {
     "target": "ES2020",
     "lib": ["ES2021"],
-    "module": "CommonJS",
+    "module": "ESNext",
     "declaration": true,
-    "outDir": "./lib",
+    "outDir": "./dist",
     "strict": true,
     "noImplicitAny": true,
     "esModuleInterop": true,
-    "allowJs": false
+    "allowJs": false,
+    "moduleResolution": "node",
+    "sourceMap": true,
+    "skipLibCheck": true
   },
   "include": ["src"],
-  "exclude": ["node_modules", "**/test/*", "*/**/*.test.ts"]
+  "exclude": ["node_modules", "**/*.test.ts", "**/test/*"]
 }
