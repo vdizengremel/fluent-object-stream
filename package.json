@@ -2,16 +2,22 @@
   "name": "fluent-object-stream",
   "version": "1.0.0-rc.2",
   "description": "Facilitate transformation on nodeJS streams",
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
-  "files": [
-    "lib/**/*"
-  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist/"],
   "engines": {
     "node": ">=16.10.0"
   },
   "scripts": {
-    "build": "rm -Rf build lib && tsc",
+    "build": "tsup src/index.ts --dts --format esm,cjs --out-dir dist",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "prettier": "prettier --config .prettierrc 'src/**/*.ts' --write",
@@ -33,7 +39,7 @@
     "transform"
   ],
   "author": "vdizengremel",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/vdizengremel/fluent-object-stream/issues"
   },
@@ -57,6 +63,7 @@
     "semantic-release": "^24.2.5",
     "ts-jest": "^29.0.5",
     "ts-node": "^10.9.1",
+    "tsup": "^8.5.0",
     "typescript": "^4.9.5"
   }
 }
