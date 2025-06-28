@@ -1,54 +1,38 @@
 name: CI
 
+env:
+  CURRENT_SUPPORTED_NODE_VERSION: 22
+  PREVIOUS_SUPPORTED_NODE_VERSION: 20
+
 on:
   push:
     branches: [main]
   pull_request:
 
 jobs:
-  # 1. Ce job génère un output avec la matrix
-  set-matrix:
-    runs-on: ubuntu-latest
-    outputs:
-      node: ${{ steps.set.outputs.node }}
-    steps:
-      - id: set
-        run: |
-          echo "node=[\"20\",\"22\"]" >> "$GITHUB_OUTPUT"
-
-  # 2. Job lint qui utilise la matrix
   lint:
-    name: lint (node ${{ matrix.node }})
-    needs: set-matrix
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node: ${{ fromJSON(needs.set-matrix.outputs.node) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          node-version: ${{ env.CURRENT_SUPPORTED_NODE_VERSION }}
       - run: npm ci
       - run: npm run lint
 
-  # 3. Job test avec la même matrix
   test:
     name: test (node ${{ matrix.node }})
-    needs: set-matrix
     runs-on: ubuntu-latest
     strategy:
-      matrix:
-        node: ${{ fromJSON(needs.set-matrix.outputs.node) }}
+      matrix: { node: [ ${{ env.PREVIOUS_SUPPORTED_NODE_VERSION }}, ${{ env.CURRENT_SUPPORTED_NODE_VERSION }} ] }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          node-version: ${{ env.CURRENT_SUPPORTED_NODE_VERSION }}
       - run: npm ci
       - run: npm test -- --coverage
 
-  # 4. Job build sans matrix (juste une fois)
   build:
     needs: test
     runs-on: ubuntu-latest
@@ -56,6 +40,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ env.CURRENT_SUPPORTED_NODE_VERSION }}
       - run: npm ci
       - run: npm run build
