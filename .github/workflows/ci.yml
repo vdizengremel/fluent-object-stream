@@ -6,6 +6,24 @@ on:
   pull_request:
 
 jobs:
+  debug-npm-token:
+    if: github.event_name == 'pull_request'
+    name: 🔍 Debug NPM Token
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org/
+
+      - name: Check npm whoami
+        run: |
+          echo "Testing NPM token..."
+          npm whoami
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
   lint:
     runs-on: ubuntu-latest
     steps:
