@@ -104,7 +104,7 @@ export default class ObjectStream<T> {
     return this.transformWith({
       transformElement: (value, pushData) => {
         if (filterFn(value)) {
-          pushData(value)
+          pushData(value as S)
         }
       },
     })

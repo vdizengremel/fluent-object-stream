@@ -169,17 +169,24 @@ describe('ObjectStream', () => {
   })
 
   describe('#filter', () => {
-    it('should filter stream', async () => {
+    it('should filter stream with simple predicate', async () => {
       const objectStream: ObjectStream<number> = createObjectStreamFromArray([1, 2, 3])
 
       const resultStream = objectStream.filter((value) => value === 2)
       expect(await resultStream.toArray()).toEqual([2])
     })
 
+    it('should filter stream with predicate that determine type', async () => {
+      const objectStream: ObjectStream<number | undefined> = createObjectStreamFromArray([1, undefined, 3])
+
+      const resultStream: ObjectStream<number> = objectStream.filter((value): value is number => !!value)
+      expect(await resultStream.toArray()).toEqual([1, 3])
+    })
+
     it('should reject on final operation if an error occurs during filter', async () => {
       const objectStream: ObjectStream<number> = createObjectStreamFromArray([1, 2, 3])
 
-      const resultStream = objectStream.filter(() => {
+      const resultStream = objectStream.filter((value): value is number => {
         throw new Error('Error during filter')
       })
 
