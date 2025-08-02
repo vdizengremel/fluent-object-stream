@@ -4,15 +4,19 @@ import eslint from '@eslint/js'
 import stylistic from '@stylistic/eslint-plugin'
 import jestFormatting from 'eslint-plugin-jest-formatting'
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended'
+import pluginSecurity from 'eslint-plugin-security'
+import noOnlyTests from "eslint-plugin-no-only-tests";
 
 export default tsEslint.config(
   eslint.configs.recommended,
+  pluginSecurity.configs.recommended,
   ...tsEslint.configs.strictTypeChecked,
   ...tsEslint.configs.stylisticTypeChecked,
   {
     plugins: {
       '@stylistic': stylistic,
       'jest-formatting': jestFormatting,
+      "no-only-tests": noOnlyTests
     },
     files: ['**/**.ts'],
     rules: {
@@ -23,6 +27,8 @@ export default tsEslint.config(
           argsIgnorePattern: '^_',
         },
       ],
+      "no-only-tests/no-only-tests": "error",
+      "@typescript-eslint/no-explicit-any": "error",
       '@typescript-eslint/explicit-function-return-type': 1,
       "@typescript-eslint/restrict-template-expressions": ["error", {
         "allowNumber": true
