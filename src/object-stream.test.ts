@@ -8,6 +8,7 @@ import StreamError from './stream-error'
 describe('ObjectStream', () => {
   function createObjectStreamFromArray<T>(array: T[]): ObjectStream<T> {
     const readable = Readable.from(array)
+
     return ObjectStream.ofReadable<T>(readable)
   }
 
@@ -35,6 +36,7 @@ describe('ObjectStream', () => {
       const objectStream: ObjectStream<TestObject> = createObjectStreamFromArray(testArray)
 
       const resultStream = objectStream.map((value) => value.type)
+
       expect(await resultStream.toArray()).toEqual(['1', '2'])
     })
 
@@ -66,8 +68,10 @@ describe('ObjectStream', () => {
 
       const resultStream = objectStream.mapAsync(async (value) => {
         await wait(10)
+
         return value.type
       })
+
       expect(await resultStream.toArray()).toEqual(['1', '2'])
     })
 
@@ -106,6 +110,7 @@ describe('ObjectStream', () => {
       const objectStream: ObjectStream<TestObject[]> = createObjectStreamFromArray(testArray)
 
       const resultStream = objectStream.flatMap((value) => value)
+
       expect(await resultStream.toArray()).toEqual([
         {
           type: '1',
@@ -148,6 +153,7 @@ describe('ObjectStream', () => {
 
       const resultStream = objectStream.flatMapAsync(async (value) => {
         await wait(10)
+
         return value
       })
 
@@ -173,6 +179,7 @@ describe('ObjectStream', () => {
       const objectStream: ObjectStream<number> = createObjectStreamFromArray([1, 2, 3])
 
       const resultStream = objectStream.filter((value) => value === 2)
+
       expect(await resultStream.toArray()).toEqual([2])
     })
 
@@ -180,6 +187,7 @@ describe('ObjectStream', () => {
       const objectStream: ObjectStream<number | undefined> = createObjectStreamFromArray([1, undefined, 3])
 
       const resultStream: ObjectStream<number> = objectStream.filter((value): value is number => !!value)
+
       expect(await resultStream.toArray()).toEqual([1, 3])
     })
 
@@ -200,6 +208,7 @@ describe('ObjectStream', () => {
 
       const chunkSize = 2
       const resultStream = objectStream.groupByChunk(chunkSize)
+
       expect(await resultStream.toArray()).toEqual([[1, 2], [3]])
     })
   })
@@ -223,6 +232,7 @@ describe('ObjectStream', () => {
       const objectStream: ObjectStream<TestObject> = createObjectStreamFromArray(testArray)
 
       const resultStream = objectStream.groupByKey((value) => value.type)
+
       expect(await resultStream.toArray()).toEqual<GroupingByKey<TestObject>[]>([
         {
           key: '1',
@@ -265,6 +275,7 @@ describe('ObjectStream', () => {
       const resultStream = streamUtils.groupByKey((testObject) => testObject.type)
 
       const array = await resultStream.toArray()
+
       expect(array.length).toEqual(0)
     })
   })
@@ -276,6 +287,7 @@ describe('ObjectStream', () => {
       await objectStream.forEach((value) => {
         arr.push(value)
       })
+
       expect(arr).toEqual([1, 2, 3])
     })
 
@@ -283,6 +295,7 @@ describe('ObjectStream', () => {
       const objectStream: ObjectStream<number> = createObjectStreamFromArray([1, 2, 3])
       const arr: number[] = []
       await objectStream.forEach((value) => asyncOperation(value, arr))
+
       expect(arr).toEqual([1, 2, 3])
     })
 
@@ -308,17 +321,18 @@ describe('ObjectStream', () => {
       const objectStream: ObjectStream<number> = createObjectStreamFromArray([1, 2, 3])
 
       const promise = objectStream.forEach(() => {
+        // eslint-disable-next-line @typescript-eslint/only-throw-error
         throw 'Not a real error'
       })
 
       await expect(promise).rejects.toBeInstanceOf(StreamError)
 
-      await promise.catch((err) => {
+      await promise.catch((err: unknown) => {
         expect(err).toHaveProperty('cause', 'Not a real error')
       })
     })
 
-    async function asyncOperation(value: number, arr: number[]) {
+    async function asyncOperation(value: number, arr: number[]): Promise<void> {
       await wait(10)
       arr.push(value)
     }
@@ -328,33 +342,31 @@ describe('ObjectStream', () => {
     const path = Path.join(__dirname, 'data.txt')
 
     afterEach(() => {
-      // eslint-disable-next-line security/detect-non-literal-fs-filename
       fs.unlinkSync(path)
     })
 
     it('should write stream to given destination', async () => {
       const objectStream = createObjectStreamFromArray(['1', '2', '3'])
 
-      // eslint-disable-next-line security/detect-non-literal-fs-filename
       const writeDestination = fs.createWriteStream(path, { encoding: 'utf8' })
 
       await objectStream.writeTo(writeDestination)
 
-      // eslint-disable-next-line security/detect-non-literal-fs-filename
       const content = fs.readFileSync(path)
+
       expect(content.toString()).toEqual('123')
     })
   })
 
   describe('#transformWith', () => {
-    const passThrough = (value: string, pushData: (data: string) => void) => {
+    const passThrough = (value: string, pushData: (data: string) => void): void => {
       pushData(value)
     }
 
     it('should transform data according to given function', async () => {
       const objectStream = createObjectStreamFromArray(['1', '2', '3'])
 
-      const duplicateAllValues = (value: string, pushData: (data: string) => void) => {
+      const duplicateAllValues = (value: string, pushData: (data: string) => void): void => {
         pushData(value)
         pushData(value)
       }
@@ -362,16 +374,21 @@ describe('ObjectStream', () => {
       const transformed = objectStream.transformWith({ transformElement: duplicateAllValues })
 
       const streamContent = await transformed.toArray()
+
       expect(streamContent).toEqual(['1', '1', '2', '2', '3', '3'])
     })
 
     it('should add data at end according to given function', async () => {
       const objectStream = createObjectStreamFromArray(['1', '2', '3'])
 
-      const addValueAtEnd = (pushData: (data: string) => void) => pushData('4')
+      const addValueAtEnd = (pushData: (data: string) => void): void => {
+        pushData('4')
+      }
+
       const transformed = objectStream.transformWith({ transformElement: passThrough, onEnd: addValueAtEnd })
 
       const streamContent = await transformed.toArray()
+
       expect(streamContent).toEqual(['1', '2', '3', '4'])
     })
 
@@ -406,6 +423,7 @@ describe('ObjectStream', () => {
 
       const transformed = objectStream.transformWith({
         transformElement: () => {
+          // eslint-disable-next-line @typescript-eslint/only-throw-error
           throw 'Not a real error'
         },
       })
@@ -414,7 +432,7 @@ describe('ObjectStream', () => {
 
       await expect(promise).rejects.toBeInstanceOf(StreamError)
 
-      await promise.catch((err) => {
+      await promise.catch((err: unknown) => {
         expect(err).toHaveProperty('cause', 'Not a real error')
       })
     })
@@ -425,6 +443,7 @@ describe('ObjectStream', () => {
       const transformed = objectStream.transformWith({
         transformElement: passThrough,
         onEnd: () => {
+          // eslint-disable-next-line @typescript-eslint/only-throw-error
           throw 'Not a real error'
         },
       })
@@ -433,7 +452,7 @@ describe('ObjectStream', () => {
 
       await expect(promise).rejects.toBeInstanceOf(StreamError)
 
-      await promise.catch((err) => {
+      await promise.catch((err: unknown) => {
         expect(err).toHaveProperty('cause', 'Not a real error')
       })
     })
@@ -444,7 +463,7 @@ describe('ObjectStream', () => {
       const objectStream = createObjectStreamFromArray(['1', '2', '3'])
       const doubleValueTransform = new Transform({
         objectMode: true,
-        transform(chunk: number, encoding: BufferEncoding, callback: TransformCallback) {
+        transform(chunk: number, encoding: BufferEncoding, callback: TransformCallback): void {
           callback(null, chunk * 2)
         },
       })
@@ -471,6 +490,7 @@ describe('ObjectStream', () => {
         .map((value) => {
           mapCallNumber++
           orderedCalled.push(`map${mapCallNumber}`)
+
           return value
         })
         .groupByChunk(chunkSize)
@@ -483,6 +503,7 @@ describe('ObjectStream', () => {
       const numberOfOperationAfterGroupByChunk = 2 // include group by chunk
       const nextDataToLoadAfterFirstForEach =
         chunkSize * numberOfOperationAfterGroupByChunk + DEFAULT_HIGH_WATER_MARK + 1
+
       expect(orderedCalled.indexOf(`map${nextDataToLoadAfterFirstForEach}`)).toBeGreaterThan(
         orderedCalled.indexOf('forEach1')
       )
@@ -498,6 +519,7 @@ describe('ObjectStream', () => {
       const groupSize = 10
       const array: TestObject[] = generateRangeFrom1To(100).map((value) => {
         const decade = Math.ceil(value / groupSize) * groupSize
+
         return {
           type: `${decade}`,
           value,
@@ -515,6 +537,7 @@ describe('ObjectStream', () => {
         .map((value) => {
           mapCallNumber++
           orderedCalled.push(`map${mapCallNumber}`)
+
           return value
         })
         .groupByKey((value) => {
@@ -528,6 +551,7 @@ describe('ObjectStream', () => {
 
       const numberOfOperationAfterGroupBy = 2 // include group by
       const nextDataToLoadAfterFirstForEach = groupSize * numberOfOperationAfterGroupBy + DEFAULT_HIGH_WATER_MARK + 2
+
       expect(orderedCalled.indexOf(`map${nextDataToLoadAfterFirstForEach}`)).toBeGreaterThan(
         orderedCalled.indexOf('forEach1')
       )
@@ -543,6 +567,7 @@ describe('ObjectStream', () => {
       const groupSize = 10
       const array: TestObject[] = generateRangeFrom1To(100).map((value) => {
         const decade = Math.ceil(value / groupSize) * groupSize
+
         return {
           type: `${decade}`,
           value,
@@ -563,6 +588,7 @@ describe('ObjectStream', () => {
         .map((value) => {
           mapAfterGroupByChunkCallNumber++
           orderedCalled.push(`mapAfterGroupByChunk${mapAfterGroupByChunkCallNumber}`)
+
           return value
         })
         .forEach(async () => {

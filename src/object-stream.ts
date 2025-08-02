@@ -124,7 +124,7 @@ export default class ObjectStream<T> {
    * @return the new {@link ObjectStream}.
    */
   public groupByKey(getKeyFn: (value: T) => string): ObjectStream<GroupingByKey<T>> {
-    let currentGroupingByKey: GroupingByKey<T>
+    let currentGroupingByKey: GroupingByKey<T> | undefined
 
     return this.transformWith(
       {
@@ -166,6 +166,7 @@ export default class ObjectStream<T> {
    */
   public groupByChunk(chunkSize: number): ObjectStream<T[]> {
     let chunkArray: T[] = []
+
     return this.transformWith(
       {
         transformElement: (value, pushData) => {
@@ -200,6 +201,7 @@ export default class ObjectStream<T> {
    */
   public transformWith<R>(objectTransform: ObjectTransform<T, R>, options?: ObjectStreamOptions): ObjectStream<R> {
     const transform = createTransform(objectTransform, { ...this.options, ...options })
+
     return this.applyTransform(transform, options)
   }
 
@@ -248,7 +250,8 @@ export default class ObjectStream<T> {
     const forEachStream = new Writable({
       objectMode: true,
       highWaterMark: this.options?.highWaterMark,
-      write: async (value: T, encoding: BufferEncoding, callback: (error?: Error | null) => void) => {
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises
+      write: async (value: T, encoding: BufferEncoding, callback: (error?: Error | null) => void): Promise<void> => {
         try {
           await fn(value)
           callback()
