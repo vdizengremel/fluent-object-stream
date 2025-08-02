@@ -16,7 +16,8 @@ export function createTransform<T, R>(
   return new Transform({
     objectMode: true,
     highWaterMark: options?.highWaterMark,
-    transform: async function (value, encoding, callback) {
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
+    transform: async function (value: T, encoding, callback): Promise<void> {
       try {
         await objectTransform.transformElement(value, (data) => this.push(data))
         callback()
@@ -25,7 +26,7 @@ export function createTransform<T, R>(
         else callback(new StreamError(e))
       }
     },
-    flush(callback) {
+    flush(callback): void {
       try {
         objectTransform.onEnd?.((data) => this.push(data))
         callback()
