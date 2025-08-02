@@ -1,6 +1,6 @@
 {
   "name": "fluent-object-stream",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0",
   "description": "Facilitate transformation on nodeJS streams",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -12,7 +12,9 @@
       "require": "./dist/index.cjs"
     }
   },
-  "files": ["dist/"],
+  "files": [
+    "dist/"
+  ],
   "engines": {
     "node": ">=16.10.0"
   },
