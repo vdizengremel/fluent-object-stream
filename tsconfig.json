@@ -10,7 +10,7 @@
     "esModuleInterop": true,
     "allowJs": false,
     "moduleResolution": "bundler",
-    "types": ["node", "jest"],
+    "types": ["node"],
     "sourceMap": true,
     "skipLibCheck": true
   },
