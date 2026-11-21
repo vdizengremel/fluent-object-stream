@@ -37,3 +37,19 @@ All code lives in `src/`. `src/index.ts` is the public barrel. Internal modules 
 - Stateful operators (`groupByKey`, `groupByChunk`) keep their state in closures created when the operator is called. `groupByKey` only groups *consecutive* elements with the same key, so the input must already be sorted by that key.
 
 Tests are in `src/object-stream.test.ts`, with one `describe('#method')` block per method. They build streams with `Readable.from(array)`. Vitest globals are not enabled: import `describe`/`it`/`expect`/… from `'vitest'` explicitly.
+
+## Working rules
+
+These rules come from corrections made by the maintainer. **When the maintainer corrects a behavior or an approach, add the lesson as a rule**, in the same commit as the related change, so that it is not repeated: in this section if it always applies, in `.claude/rules/` with a `paths:` frontmatter if it only concerns some files (e.g. `.claude/rules/code-style.md` for `src/**/*.ts`).
+
+### Tests
+
+- **TDD**: always start with a failing test. Run it and check that it fails _for the expected reason_ (wrong data, missing rejection…), not because of a typo or a message wording. Only then write the production code. If a test is rewritten afterwards, check again that it fails without the fix.
+- **Behavior-oriented tests**: one test per observable behavior, named after that behavior, asserting on outputs (resolved values, rejections, emitted data), not on implementation details. Cover the variants that change the outcome, e.g. operations started in the same tick vs one after the other.
+- **No behavior lost silently**: before replacing an implementation, list the behaviors of the old one and check each is covered by a test. If a refactoring loses a behavior while no test was removed or changed, a test was missing: write it first. When an approach trades a behavior for another, say so explicitly.
+- **Every condition is pinned by a test**: removing any condition or branch of production code must turn at least one test red. Check it by mutation (remove it, run the tests, restore). Code that no test pins is either missing a test or should be removed.
+
+### Documentation
+
+- **Docs follow the code**: a `CLAUDE.md`, `.claude/rules/` or README change that documents a code change goes in the same commit/PR as that change.
+- **Don't document Claude Code itself**: `CLAUDE.md` and `.claude/rules/` describe the project and how to work on it, not how Claude Code features work (how rules are loaded, what `paths:` does…).
