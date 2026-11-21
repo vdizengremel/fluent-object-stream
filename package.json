@@ -20,8 +20,8 @@
   },
   "scripts": {
     "build": "tsup src/index.ts --dts --format esm,cjs --out-dir dist --clean --tsconfig tsconfig.build.json",
-    "lint": "eslint src --ext .ts",
-    "lint:fix": "eslint src --ext *.ts --fix",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
     "prettier": "prettier --config .prettierrc 'src/**/*.ts' --write",
     "test": "vitest run",
     "test:watch": "vitest"
