@@ -1,13 +1,6 @@
-import { Readable, Transform, Writable } from 'stream'
-import { pipeline } from 'stream/promises'
+import { Readable, Transform, Writable } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
 import { createTransform, ObjectTransform, ObjectStreamOptions, StreamError } from '.'
-
-/**
- * Sources already consumed by a terminal operation. A {@link Readable} can only be consumed once, so running a second
- * terminal operation on the same source (same chain, branches of a chain, or two ObjectStreams created from the same
- * readable) would silently produce wrong data.
- */
-const consumedSources = new WeakSet<Readable>()
 
 /**
  * This is a class to facilitate the transformation of data in a stream. The generic type represent the type of the data in the stream.
@@ -286,15 +279,17 @@ export default class ObjectStream<T> {
    * - or rejected with the error raised during the processing of the stream if there is one.
    */
   async writeTo(writable: Writable): Promise<void> {
-    // Checked and marked before the first await, so that branches started together (e.g. with Promise.all) are detected.
-    if (consumedSources.has(this.stream)) {
+    // A Readable can only be consumed once. The state of the source tells whether it is already being consumed:
+    // - readableFlowing is set to true synchronously by pipeline(), so it catches another execution started in the same
+    //   tick (branches of a chain, or two ObjectStreams on the same readable, started with Promise.all), before any read;
+    // - readableDidRead catches a source already read, even partially, here or outside of ObjectStream.
+    // This check must stay before the first await of this method.
+    if (this.stream.readableFlowing === true || this.stream.readableDidRead) {
       throw new Error(
-        'This ObjectStream has already been executed: its source Readable can only be consumed once. ' +
+        'The source Readable of this ObjectStream has already been consumed: a Readable can only be read once. ' +
           'A chain can only run one terminal operation, and branching several chains from the same ObjectStream is not supported.'
       )
     }
-
-    consumedSources.add(this.stream)
 
     await pipeline([this.stream, ...this.intermediateOperations, writable])
   }

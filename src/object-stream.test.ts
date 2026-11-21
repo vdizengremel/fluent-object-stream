@@ -606,7 +606,7 @@ describe('ObjectStream', () => {
   })
 
   describe('single execution', () => {
-    const alreadyExecutedError = /already been executed/
+    const alreadyConsumedError = /already been consumed/
 
     it('should run the first branch correctly and reject the second one when branching from the same chain', async () => {
       const base = createObjectStreamFromArray([1, 2, 3, 4]).map((value) => value * 10)
@@ -615,7 +615,7 @@ describe('ObjectStream', () => {
       const firstBranch = base.filter((value) => value > 10).toArray()
       const secondBranch = base.map((value) => value + 1).toArray()
 
-      await expect(secondBranch).rejects.toThrow(alreadyExecutedError)
+      await expect(secondBranch).rejects.toThrow(alreadyConsumedError)
       expect(await firstBranch).toEqual([20, 30, 40])
     })
 
@@ -623,7 +623,7 @@ describe('ObjectStream', () => {
       const objectStream = createObjectStreamFromArray([1, 2]).map((value) => value * 2)
 
       expect(await objectStream.toArray()).toEqual([2, 4])
-      await expect(objectStream.toArray()).rejects.toThrow(alreadyExecutedError)
+      await expect(objectStream.toArray()).rejects.toThrow(alreadyConsumedError)
     })
 
     it('should reject with an explicit error when two ObjectStreams are created from the same readable', async () => {
@@ -632,7 +632,33 @@ describe('ObjectStream', () => {
       const second = ObjectStream.ofReadable<number>(readable)
 
       expect(await first.toArray()).toEqual([1, 2])
-      await expect(second.toArray()).rejects.toThrow(alreadyExecutedError)
+      await expect(second.toArray()).rejects.toThrow(alreadyConsumedError)
+    })
+
+    it('should run the first one correctly and reject the second one when two ObjectStreams created from the same readable are started together', async () => {
+      const readable = Readable.from([1, 2])
+      const first = ObjectStream.ofReadable<number>(readable).toArray()
+      const second = ObjectStream.ofReadable<number>(readable).toArray()
+
+      await expect(second).rejects.toThrow(alreadyConsumedError)
+      expect(await first).toEqual([1, 2])
+    })
+
+    it('should reject with an explicit error when the readable has already been consumed outside of ObjectStream', async () => {
+      const readable = Readable.from([1, 2])
+
+      for await (const _ of readable) {
+        // consume the readable without ObjectStream
+      }
+
+      await expect(ObjectStream.ofReadable<number>(readable).toArray()).rejects.toThrow(alreadyConsumedError)
+    })
+
+    it('should reject with an explicit error when the readable has been partially read outside of ObjectStream', async () => {
+      const readable = Readable.from([1, 2, 3])
+      readable.read()
+
+      await expect(ObjectStream.ofReadable<number>(readable).toArray()).rejects.toThrow(alreadyConsumedError)
     })
   })
 })
