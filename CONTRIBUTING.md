@@ -5,6 +5,7 @@
 ```bash
 npm ci            # install (dependency install scripts are blocked, see below)
 npm test          # vitest
+npm run typecheck # tsc: the only step that checks types
 npm run lint
 npm run build     # dist/ (ESM + CJS + .d.ts)
 ```

@@ -4,4 +4,5 @@ import ObjectTransform from './object-transform'
 import { createTransform } from './transform-factory'
 import StreamError from './stream-error'
 
-export { ObjectStream, GroupingByKey, createTransform, ObjectTransform, ObjectStreamOptions, StreamError }
+export { ObjectStream, createTransform, StreamError }
+export type { GroupingByKey, ObjectTransform, ObjectStreamOptions }
