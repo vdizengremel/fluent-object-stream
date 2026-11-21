@@ -3,6 +3,13 @@ import { pipeline } from 'stream/promises'
 import { createTransform, ObjectTransform, ObjectStreamOptions, StreamError } from '.'
 
 /**
+ * Sources already consumed by a terminal operation. A {@link Readable} can only be consumed once, so running a second
+ * terminal operation on the same source (same chain, branches of a chain, or two ObjectStreams created from the same
+ * readable) would silently produce wrong data.
+ */
+const consumedSources = new WeakSet<Readable>()
+
+/**
  * This is a class to facilitate the transformation of data in a stream. The generic type represent the type of the data in the stream.
  * All methods allow to keep a strongly typed system.
  */
@@ -221,7 +228,8 @@ export default class ObjectStream<T> {
   /**
    * Return all the elements of the stream in an array.
    * <p>
-   *  This is a <strong>terminal operation</strong>.
+   *  This is a <strong>terminal operation</strong>. It consumes the source, so it can only be called once per source:
+   *  a second terminal operation on the same chain, or on another chain created from the same source, rejects.
    * <p/>
    * @return a Promise which is
    * - resolved once all the stream is processed with an array containing all the elements of the stream
@@ -239,7 +247,8 @@ export default class ObjectStream<T> {
   /**
    * Apply the given function to each element of the stream before closing it.
    * <p>
-   *  This is a <strong>terminal operation</strong>.
+   *  This is a <strong>terminal operation</strong>. It consumes the source, so it can only be called once per source:
+   *  a second terminal operation on the same chain, or on another chain created from the same source, rejects.
    * <p/>
    * @param fn Function that is called for each element of the stream. It can be an async function.
    * @return a Promise which is
@@ -268,7 +277,8 @@ export default class ObjectStream<T> {
   /**
    * Pass each element to the writable stream.
    * <p>
-   *  This is a <strong>terminal operation</strong>.
+   *  This is a <strong>terminal operation</strong>. It consumes the source, so it can only be called once per source:
+   *  a second terminal operation on the same chain, or on another chain created from the same source, rejects.
    * <p/>
    * @param writable Writable stream to write data to their destination.
    * @return a Promise which is
@@ -276,6 +286,16 @@ export default class ObjectStream<T> {
    * - or rejected with the error raised during the processing of the stream if there is one.
    */
   async writeTo(writable: Writable): Promise<void> {
+    // Checked and marked before the first await, so that branches started together (e.g. with Promise.all) are detected.
+    if (consumedSources.has(this.stream)) {
+      throw new Error(
+        'This ObjectStream has already been executed: its source Readable can only be consumed once. ' +
+          'A chain can only run one terminal operation, and branching several chains from the same ObjectStream is not supported.'
+      )
+    }
+
+    consumedSources.add(this.stream)
+
     await pipeline([this.stream, ...this.intermediateOperations, writable])
   }
 }

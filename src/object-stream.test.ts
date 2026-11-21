@@ -604,6 +604,37 @@ describe('ObjectStream', () => {
       return array
     }
   })
+
+  describe('single execution', () => {
+    const alreadyExecutedError = /already been executed/
+
+    it('should run the first branch correctly and reject the second one when branching from the same chain', async () => {
+      const base = createObjectStreamFromArray([1, 2, 3, 4]).map((value) => value * 10)
+
+      // Both branches are started in the same tick, as with Promise.all
+      const firstBranch = base.filter((value) => value > 10).toArray()
+      const secondBranch = base.map((value) => value + 1).toArray()
+
+      await expect(secondBranch).rejects.toThrow(alreadyExecutedError)
+      expect(await firstBranch).toEqual([20, 30, 40])
+    })
+
+    it('should reject with an explicit error when a terminal operation is called twice on the same chain', async () => {
+      const objectStream = createObjectStreamFromArray([1, 2]).map((value) => value * 2)
+
+      expect(await objectStream.toArray()).toEqual([2, 4])
+      await expect(objectStream.toArray()).rejects.toThrow(alreadyExecutedError)
+    })
+
+    it('should reject with an explicit error when two ObjectStreams are created from the same readable', async () => {
+      const readable = Readable.from([1, 2])
+      const first = ObjectStream.ofReadable<number>(readable)
+      const second = ObjectStream.ofReadable<number>(readable)
+
+      expect(await first.toArray()).toEqual([1, 2])
+      await expect(second.toArray()).rejects.toThrow(alreadyExecutedError)
+    })
+  })
 })
 
 interface TestObject {
