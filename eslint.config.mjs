@@ -1,5 +1,5 @@
 import tsEslint from 'typescript-eslint'
-import eslintPluginJest from 'eslint-plugin-jest'
+import vitest from '@vitest/eslint-plugin'
 import eslint from '@eslint/js'
 import stylistic from '@stylistic/eslint-plugin'
 import jestFormatting from 'eslint-plugin-jest-formatting'
@@ -64,14 +64,8 @@ export default tsEslint.config(
     },
   },
   {
-    plugins: {
-      jest: eslintPluginJest,
-    },
     files: ['**/**.test.ts'],
-    rules: {
-      '@typescript-eslint/unbound-method': 'off',
-      'jest/unbound-method': 'error',
-    },
+    ...vitest.configs.recommended,
   },
   {
     rules: {

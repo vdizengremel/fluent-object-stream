@@ -1,3 +1,4 @@
+import { afterEach, describe, expect, it } from 'vitest'
 import { ObjectStream, GroupingByKey } from '.'
 import { Readable, Transform, TransformCallback } from 'stream'
 import { setTimeout as wait } from 'timers/promises'
@@ -87,7 +88,7 @@ describe('ObjectStream', () => {
   })
 
   describe('#flatMap', () => {
-    it('should flat resulting array of transform function into multiple values in stream ', async () => {
+    it('should flat resulting array of transform function into multiple values in stream', async () => {
       const testArray: TestObject[][] = [
         [
           {
@@ -129,7 +130,7 @@ describe('ObjectStream', () => {
   })
 
   describe('#flatMapAsync', () => {
-    it('should flat resolving array of transform function into multiple values in stream ', async () => {
+    it('should flat resolving array of transform function into multiple values in stream', async () => {
       const testArray: TestObject[][] = [
         [
           {
@@ -326,10 +327,7 @@ describe('ObjectStream', () => {
       })
 
       await expect(promise).rejects.toBeInstanceOf(StreamError)
-
-      await promise.catch((err: unknown) => {
-        expect(err).toHaveProperty('cause', 'Not a real error')
-      })
+      await expect(promise).rejects.toHaveProperty('cause', 'Not a real error')
     })
 
     async function asyncOperation(value: number, arr: number[]): Promise<void> {
@@ -431,10 +429,7 @@ describe('ObjectStream', () => {
       const promise = transformed.toArray()
 
       await expect(promise).rejects.toBeInstanceOf(StreamError)
-
-      await promise.catch((err: unknown) => {
-        expect(err).toHaveProperty('cause', 'Not a real error')
-      })
+      await expect(promise).rejects.toHaveProperty('cause', 'Not a real error')
     })
 
     it('should reject a stream error if the occurred error during end is not from error type', async () => {
@@ -451,10 +446,7 @@ describe('ObjectStream', () => {
       const promise = transformed.toArray()
 
       await expect(promise).rejects.toBeInstanceOf(StreamError)
-
-      await promise.catch((err: unknown) => {
-        expect(err).toHaveProperty('cause', 'Not a real error')
-      })
+      await expect(promise).rejects.toHaveProperty('cause', 'Not a real error')
     })
   })
 
