@@ -53,3 +53,8 @@ These rules come from corrections made by the maintainer. **When the maintainer 
 
 - **Docs follow the code**: a `CLAUDE.md`, `.claude/rules/` or README change that documents a code change goes in the same commit/PR as that change.
 - **Don't document Claude Code itself**: `CLAUDE.md` and `.claude/rules/` describe the project and how to work on it, not how Claude Code features work (how rules are loaded, what `paths:` does…).
+
+### Tooling
+
+- **Narrow a noisy tool rather than removing it**: if a linter plugin only reports false positives in some files (e.g. `eslint-plugin-security` on test fixtures), disable it for those files and keep it where it can still catch real issues.
+- **Check that a config refactoring changes nothing unexpected**: for ESLint, compare `npx eslint --print-config <file>` before and after on a source file and a test file.
