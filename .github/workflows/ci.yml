@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [20, 22]
+        node: [22, 24, 26]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -34,7 +34,7 @@ jobs:
       - run: npm test -- --coverage
       - name: Coveralls
         uses: coverallsapp/github-action@v2
-        if: matrix.node == 22
+        if: matrix.node == 24
 
   build:
     needs: test
@@ -63,7 +63,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 26
           registry-url: https://registry.npmjs.org/
       - run: npm ci
       - run: git config user.name "github-actions[bot]"
