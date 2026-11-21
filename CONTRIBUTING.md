@@ -9,7 +9,8 @@ npm run lint
 npm run build     # dist/ (ESM + CJS + .d.ts)
 ```
 
-Requires Node 22 or later. CI runs lint, tests on Node 22, 24 and 26, and build.
+Requires Node 22 or later. CI runs lint, tests on Node 22, 24 and 26, build, and [zizmor](https://docs.zizmor.sh/) on the
+GitHub Actions workflows.
 
 ## Pull requests
 
@@ -54,11 +55,15 @@ truth.
 
 ### When something goes wrong
 
-- **Staged version rejected** (`npm stage reject <id>`): the tag and the GitHub Release already exist. Delete them
-  (`git push origin --delete vX.Y.Z` and the release on GitHub) before releasing again.
+- **Staged version rejected** (`npm stage reject <id>`): the tag and the GitHub Release already exist and, with
+  immutable releases, cannot be deleted. That version number is burned: mark the GitHub Release notes as "not published
+  on npm", fix the problem with a new `fix:` PR, and release again. semantic-release starts from the last tag, so the
+  next release automatically takes the next number.
 - **`npm stage publish` fails with 401/403/404**: the OIDC token does not match the trusted publisher configuration on
   npm (repository, workflow file name, environment name, allowed actions). Check it with
-  `npm trust list fluent-object-stream`. The tag was already pushed: delete it before retrying.
+  `npm trust list fluent-object-stream`. The tag was already pushed, but no GitHub Release was created (the GitHub
+  step runs after the npm one), so the tag is not protected yet: delete it (`git push origin --delete vX.Y.Z`) before
+  retrying.
 - **Trusted publisher expired**: npm expires a new trusted publisher configuration that is not validated by a publish
   within a few days. Delete it and create it again right before releasing.
 - **Publish by hand** (emergency only): from a clean checkout of the tag, `npm ci --ignore-scripts && npm run build`,
@@ -85,3 +90,5 @@ This setup lives outside the repository. Keep it in sync with the workflow.
 - If a rule protects `v*` tags, GitHub Actions must be allowed to create them (semantic-release pushes the tag with the
   workflow's `GITHUB_TOKEN`).
 - **Secrets**: none. The release job only uses the ephemeral `GITHUB_TOKEN` and OIDC.
+- **Security**: private vulnerability reporting, secret scanning with push protection and Dependabot alerts enabled.
+- **Releases**: immutable releases enabled (a published release, its tag and its assets cannot be changed or deleted).
