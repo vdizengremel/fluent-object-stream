@@ -280,11 +280,12 @@ export default class ObjectStream<T> {
    */
   async writeTo(writable: Writable): Promise<void> {
     // A Readable can only be consumed once. The state of the source tells whether it is already being consumed:
-    // - readableFlowing is set to true synchronously by pipeline(), so it catches another execution started in the same
-    //   tick (branches of a chain, or two ObjectStreams on the same readable, started with Promise.all), before any read;
+    // - readableFlowing (null, true or false) is set to true synchronously by pipeline(), so it catches another execution
+    //   started in the same tick (branches of a chain, or two ObjectStreams on the same readable, started with
+    //   Promise.all), before any read;
     // - readableDidRead catches a source already read, even partially, here or outside of ObjectStream.
     // This check must stay before the first await of this method.
-    if (this.stream.readableFlowing === true || this.stream.readableDidRead) {
+    if (this.stream.readableFlowing || this.stream.readableDidRead) {
       throw new Error(
         'The source Readable of this ObjectStream has already been consumed: a Readable can only be read once. ' +
           'A chain can only run one terminal operation, and branching several chains from the same ObjectStream is not supported.'
