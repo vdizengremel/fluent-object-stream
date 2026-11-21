@@ -75,6 +75,18 @@ They all return a promise :
 
 Terminal operations are `forEach`, `toArray` and `writeTo`.
 
+A terminal operation consumes the source `Readable`, which can only be read once. So a chain can only be executed once:
+running a second terminal operation on the same chain, on another chain branched from the same `ObjectStream`, or on
+another `ObjectStream` created from the same readable rejects with an error. So does running a chain on a readable
+that has already been read elsewhere.
+
+```typescript
+const adults = objectStream.filter((person) => person.isAdult())
+
+await adults.map((person) => person.name).toArray() // OK
+await adults.map((person) => person.age).toArray() // rejects: the source has already been consumed
+```
+
 
 #### Intermediate operations
 The intermediate operations are simply the methods that return an ObjectStream which allows you to chain them.

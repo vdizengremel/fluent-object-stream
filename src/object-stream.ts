@@ -1,5 +1,5 @@
-import { Readable, Transform, Writable } from 'stream'
-import { pipeline } from 'stream/promises'
+import { Readable, Transform, Writable } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
 import { createTransform, ObjectTransform, ObjectStreamOptions, StreamError } from '.'
 
 /**
@@ -221,7 +221,8 @@ export default class ObjectStream<T> {
   /**
    * Return all the elements of the stream in an array.
    * <p>
-   *  This is a <strong>terminal operation</strong>.
+   *  This is a <strong>terminal operation</strong>. It consumes the source, so it can only be called once per source:
+   *  a second terminal operation on the same chain, or on another chain created from the same source, rejects.
    * <p/>
    * @return a Promise which is
    * - resolved once all the stream is processed with an array containing all the elements of the stream
@@ -239,7 +240,8 @@ export default class ObjectStream<T> {
   /**
    * Apply the given function to each element of the stream before closing it.
    * <p>
-   *  This is a <strong>terminal operation</strong>.
+   *  This is a <strong>terminal operation</strong>. It consumes the source, so it can only be called once per source:
+   *  a second terminal operation on the same chain, or on another chain created from the same source, rejects.
    * <p/>
    * @param fn Function that is called for each element of the stream. It can be an async function.
    * @return a Promise which is
@@ -268,7 +270,8 @@ export default class ObjectStream<T> {
   /**
    * Pass each element to the writable stream.
    * <p>
-   *  This is a <strong>terminal operation</strong>.
+   *  This is a <strong>terminal operation</strong>. It consumes the source, so it can only be called once per source:
+   *  a second terminal operation on the same chain, or on another chain created from the same source, rejects.
    * <p/>
    * @param writable Writable stream to write data to their destination.
    * @return a Promise which is
@@ -276,6 +279,19 @@ export default class ObjectStream<T> {
    * - or rejected with the error raised during the processing of the stream if there is one.
    */
   async writeTo(writable: Writable): Promise<void> {
+    // A Readable can only be consumed once. The state of the source tells whether it is already being consumed:
+    // - readableFlowing (null, true or false) is set to true synchronously by pipeline(), so it catches another execution
+    //   started in the same tick (branches of a chain, or two ObjectStreams on the same readable, started with
+    //   Promise.all), before any read;
+    // - readableDidRead catches a source already read, even partially, here or outside of ObjectStream.
+    // This check must stay before the first await of this method.
+    if (this.stream.readableFlowing || this.stream.readableDidRead) {
+      throw new Error(
+        'The source Readable of this ObjectStream has already been consumed: a Readable can only be read once. ' +
+          'A chain can only run one terminal operation, and branching several chains from the same ObjectStream is not supported.'
+      )
+    }
+
     await pipeline([this.stream, ...this.intermediateOperations, writable])
   }
 }
