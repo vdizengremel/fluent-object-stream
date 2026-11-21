@@ -27,7 +27,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - run: npm run lint
 
   test:
@@ -46,7 +46,7 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - run: npm test -- --coverage
       - name: Coveralls
         if: matrix.node == 24
@@ -63,7 +63,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - run: npm run build
 
   # Single stable check to mark as "required" in branch protection.
@@ -84,24 +84,23 @@ jobs:
     needs: ci-ok
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Protected environment: manual approval, main only. Must match the trusted publisher configured on npmjs.com.
+    environment: npm-publish
     permissions:
-      contents: read
-      id-token: write # npm provenance
+      contents: write # push the release tag, create the GitHub release
+      id-token: write # npm trusted publishing (OIDC) + provenance; stage publish only, approved by hand on npm with 2FA
     env:
-      # PAT: git push of the release commit, GitHub release. semantic-release uses it to authenticate git itself.
-      GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      NPM_CONFIG_PROVENANCE: true
+      # Ephemeral token: semantic-release also uses it to authenticate git when pushing the tag.
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
+      # No registry-url: it would write an .npmrc expecting NODE_AUTH_TOKEN, which conflicts with OIDC.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 26 # semantic-release 26 requires Node >= 26.13
-          registry-url: https://registry.npmjs.org/
-      - run: npm ci
-      - run: npm whoami
+      - run: npm ci --ignore-scripts
+      - run: npm run build
       - run: npx semantic-release

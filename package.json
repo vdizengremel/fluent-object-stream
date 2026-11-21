@@ -23,10 +23,6 @@
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext *.ts --fix",
     "prettier": "prettier --config .prettierrc 'src/**/*.ts' --write",
-    "prepare": "npm run build",
-    "prepublishOnly": "npm test && npm run lint",
-    "preversion": "npm test && npm run lint",
-    "version": "git add -A src",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -48,8 +44,7 @@
   "homepage": "https://github.com/vdizengremel/fluent-object-stream#readme",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@semantic-release/changelog": "^7.0.0",
-    "@semantic-release/git": "^11.0.1",
+    "@semantic-release/exec": "^7.1.0",
     "@semantic-release/github": "^12.0.11",
     "@semantic-release/npm": "^13.2.0",
     "@stylistic/eslint-plugin": "^6.0.1",
@@ -68,5 +63,8 @@
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.73.0",
     "vitest": "^5.1.1"
+  },
+  "allowScripts": {
+    "esbuild": false
   }
 }
