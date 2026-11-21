@@ -20,6 +20,7 @@
   },
   "scripts": {
     "build": "tsup src/index.ts --dts --format esm,cjs --out-dir dist --clean --tsconfig tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "prettier": "prettier --config .prettierrc 'src/**/*.ts' --write",
