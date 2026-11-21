@@ -1,3 +1,5 @@
+> Starting with the next release, release notes are published on [GitHub Releases](https://github.com/vdizengremel/fluent-object-stream/releases).
+
 # 1.0.0 (2025-08-02)
 
 
