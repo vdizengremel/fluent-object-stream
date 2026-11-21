@@ -194,7 +194,7 @@ describe('ObjectStream', () => {
     it('should reject on final operation if an error occurs during filter', async () => {
       const objectStream: ObjectStream<number> = createObjectStreamFromArray([1, 2, 3])
 
-      const resultStream = objectStream.filter((value): value is number => {
+      const resultStream = objectStream.filter((_value): _value is number => {
         throw new Error('Error during filter')
       })
 
@@ -276,7 +276,7 @@ describe('ObjectStream', () => {
 
       const array = await resultStream.toArray()
 
-      expect(array.length).toEqual(0)
+      expect(array).toHaveLength(0)
     })
   })
 
